@@ -157,7 +157,9 @@ void bucket_sort(my_vector<my_pair> & v, uint64_t m) {
         temp[temp1[i]]++;
     }
     for (uint64_t i = 0; i < n; ++i) {
-        b[temp1[i]].resize(temp[i]);
+        b[i].resize(temp[i]);
+    }
+    for (uint64_t i = 0; i < n; ++i) {
         b[temp1[i]].push_back(v[i]);
     }
     for (uint64_t i = 0; i < n; ++i) {
