@@ -24,14 +24,14 @@
     Вариант задания:
         \begin{itemize}
             \item Сортировка подсчётом.
-            \item Тип ключа: числа от 0 до $10^{5}$.
-            \item Тип значения: буквы латинского алфавита.
+            \item Тип ключа: числа от 0 до $2^{64}-1$.
+            \item Тип значения: строки фиксированной длины 64 символа, во входных данных могут встретиться строки меньшей длины, при этом строка дополняется до 64-х нулевыми символами, которые не выводятся на экран.
         \end{itemize}
 \end{enumerate}
 
 \subsection*{Метод решения}
 
-Для хранения входных данных был написан вектор с динамическим выделением памяти, так как количество строк входных данных заранее неизвестно. Сортировка подсчетом была реализована с использованием массива префиксных сумм для более быстрой работы алгоритма.
+Для хранения входных данных и блоков (карманов) был написан вектор с выделением памяти на куче. Также для сортировки элементов в карманах была написана сортировка слиянием.
 
 \subsection*{Описание программы}
 
@@ -40,150 +40,167 @@
 \begin{lstlisting}[language=C++]
 template <typename T>
 class my_vector {
-    T* _data;
-    size_t _size, _capacity;
-
-   public:
-    my_vector();
-    my_vector(size_t init_size);
-    my_vector(const my_vector& other);
-    my_vector(my_vector&& other);
-    ~my_vector();
-
-    bool is_empty();
-    void resize(size_t new_size);
-    void push_back(const T& new_elem);
-
-    T* data() const;
-    size_t size() const;
-    size_t capacity() const;
-
-    T& operator[](size_t index);
-    const T& operator[](size_t index) const;
-
-   private:
-    static T* allocate(size_t new_capacity);
-    void reallocate(size_t new_capacity);
-};
-
-template <typename T>
-size_t my_vector<T>::size() const {
-    return _size;
-}
-
-template <typename T>
-size_t my_vector<T>::capacity() const {
-    return _capacity;
-}
-
-template <typename T>
-T* my_vector<T>::data() const {
-    return _data;
-}
-
-template <typename T>
-T* my_vector<T>::allocate(size_t new_capacity) {
-    return new T[new_capacity];
-}
-
-template <typename T>
-void my_vector<T>::reallocate(size_t new_capacity) {
-    T* temp = allocate(new_capacity);
-    std::copy(_data, _data + _size, temp);
-    _capacity = new_capacity;
-    delete[] _data;
-    _data = temp;
-}
-
-template <typename T>
-my_vector<T>::my_vector() : _size(0), _capacity(0), _data(nullptr) {}
-
-template <typename T>
-my_vector<T>::my_vector(size_t init_size) : _size(init_size), _capacity(init_size) {
-    _data = allocate(_capacity);
-}
-
-template <typename T>
-my_vector<T>::my_vector(const my_vector& other)
-    : _size(other.size()), _capacity(other.capacity()) {
-    _data = allocate(_capacity);
-    std::copy(other.data(), other.data() + _size, _data);
-}
-
-template <typename T>
-my_vector<T>::my_vector(my_vector&& other)
-    : _size(other._size), _capacity(other._capacity), _data(other._data) {
-    other._data = nullptr;
-    other._size = 0;
-    other._capacity = 0;
-}
-
-template <typename T>
-my_vector<T>::~my_vector() {
-    if (_data != nullptr) {
-        delete[] _data;
-        _data = nullptr;
+private:
+    T * data;
+    uint64_t size;
+    uint64_t capacity;
+public:
+    my_vector() : data(nullptr), size(0), capacity(0) {}
+    my_vector(uint64_t new_size) {
+        data = new T[new_size];
+        size = 0;
+        capacity = new_size;
     }
-}
-
-template <typename T>
-bool my_vector<T>::is_empty() {
-    return _size == 0;
-}
-
-template <typename T>
-void my_vector<T>::resize(size_t new_size) {
-    if (new_size <= _capacity) {
-        _size = new_size;
-    } else {
-        size_t new_capacity = _capacity > size_t(1) ? _capacity : size_t(1);
-        while (new_capacity < new_size) {
-            new_capacity *= 2;
+    ~my_vector() {
+        if (data != nullptr) {
+            delete[] data;
+            data = nullptr;
         }
-        reallocate(new_capacity);
-        _size = new_size;
     }
-}
+    uint64_t get_size() {
+        return size;
+    }
+    my_vector(const my_vector& other) : size(other.size), capacity(other.capacity) {
+        data = new T[capacity];
+        std::copy(other.data, other.data + size, data);
+    }
 
-template <typename T>
-void my_vector<T>::push_back(const T& new_elem) {
-    resize(_size + 1);
-    (*this)[_size - 1] = new_elem;
-}
+    my_vector(my_vector&& other) noexcept : data(other.data), size(other.size), capacity(other.capacity) {
+        other.data = nullptr;
+        other.size = 0;
+        other.capacity = 0;
+    }
 
-template <typename T>
-T& my_vector<T>::operator[](size_t index) {
-    return _data[index];
-}
-
-template <typename T>
-const T& my_vector<T>::operator[](size_t index) const {
-    return _data[index];
-}
+    my_vector& operator=(const my_vector& other) {
+        if (this != &other) {
+            delete[] data;
+            size = other.size;
+            capacity = other.capacity;
+            data = new T[capacity];
+            std::copy(other.data, other.data + size, data);
+        }
+        return *this;
+    }
+    my_vector& operator=(my_vector&& other) noexcept {
+        if (this != &other) {
+            delete[] data;
+            data = other.data;
+            size = other.size;
+            capacity = other.capacity;
+            other.data = nullptr;
+            other.size = 0;
+            other.capacity = 0;
+        }
+        return *this;
+    }
+    void push_back(const T& elem) {
+        if (size >= capacity) {
+            throw std::out_of_range("Index out of range. Size: " + std::to_string(size));
+        }
+        data[size++] = elem;
+    }
+    void resize(const int k) {
+        if (k <= 0) return;
+        capacity += k;
+        T* temp = new T[capacity];
+        if (data != nullptr) {
+            std::copy(data, data + size, temp);
+        }
+        delete[] data;
+        data = temp;
+    }
+    T& operator[](uint64_t index) {
+        return data[index];
+    }
+};
 \end{lstlisting}
-Структура \texttt{my\_pair} необходима для для хранения пар "ключ-значение". Для ключа использовался тип данных \texttt{uint32\_t}, который в большей мере подходит для заданных ограничений. Для значений был выбран тип \texttt{char}.
+Структура \texttt{my\_pair} необходима для для хранения пар "ключ-значение". Для ключа использовался тип данных \texttt{uint64\_t}, который в большей мере подходит для заданных ограничений. Для значений был выбран массив \texttt{char} на стеке.
 \begin{lstlisting}[language=C++]
 struct my_pair {
-    uint32_t key;
-    char value;
+    uint64_t key;
+    char value[SIZE_OF_STRING];
+    my_pair() {
+        std::memset(value, 0, SIZE_OF_STRING);
+    }
+    bool operator<(const my_pair& other) const {
+        return key < other.key;
+    }
+    bool operator<=(const my_pair& other) const {
+        return key <= other.key;
+    }
 };
 \end{lstlisting}
-Функция \texttt{counting\_sort()} содержит реализацию алгоритма сортировки. 
+
+Функции \texttt{merge\_sort()} и \texttt{merge()} содержат реализацию алгоритма сортировки слиянием. 
 
 \begin{lstlisting}[language=C++]
-void counting_sort(my_vector<size_t>& cnt, my_vector<my_pair>& arr) {
-    for (size_t i = 1; i < cnt.size(); ++i) {
-        cnt[i] = cnt[i - 1] + cnt[i];
+template <class T>
+void merge(my_vector<T>& arr, my_vector<T>& buf, std::size_t left, std::size_t mid, std::size_t right) {
+    std::size_t it1 = 0;
+    std::size_t it2 = 0;
+    while (left + it1 < mid && mid + it2 < right) {
+        if (arr[left + it1] <= arr[mid + it2]) {
+            buf[it1 + it2] = std::move(arr[left + it1]);
+            it1 += 1;
+        } else {
+            buf[it1 + it2] = std::move(arr[mid + it2]);
+            it2 += 1;
+        }
+    }
+    while (left + it1 < mid) {
+        buf[it1 + it2] = std::move(arr[left + it1]);
+        it1 += 1;
     }
 
-    my_vector<my_pair> res(arr.size());
-
-    for (size_t i = arr.size(); i-- > 0;) {
-        uint32_t key = arr[i].key;
-        res[cnt[key] - 1] = arr[i];
-        --cnt[key];
+    while (mid + it2 < right) {
+        buf[it1 + it2] = std::move(arr[mid + it2]);
+        it2 += 1;
     }
-    arr = res;
+    for (std::size_t i = 0; i < it1 + it2; ++i) {
+        arr[left + i] = std::move(buf[i]);
+    }
+}
+
+template <class T>
+void merge_sort(my_vector<T>& arr, my_vector<T>& buf) {
+    std::size_t count = arr.get_size();
+    for (size_t i = 1; i < count; i *= 2) {
+        for (size_t j = 0; j < count - i; j += 2 * i) {
+            merge(arr, buf, j, j + i, min(j + 2 * i, count));
+        }
+    }
+}
+\end{lstlisting}
+
+Функция \texttt{bucket\_sort()} содержит реализацию алгоритма сортировки. Для поддержания необходимосй скорости алгоритма для сортировки элементов карманов используется сортировка слиянием. В ходе алгоритма для экономии используемой памяти вектор \texttt{my_vector<my_pair> v} с исходными данными используется как буфер для сортировки карманов и перезаписывается.
+
+\begin{lstlisting}[language=C++]
+void bucket_sort(my_vector<my_pair> & v, uint64_t m) {
+    uint64_t n = v.get_size();
+    my_vector<my_pair> b[n];
+    uint64_t temp1[n];
+    int temp[n];
+    for (uint64_t i = 0; i < n; ++i) {
+        temp[i] = 0;
+    }
+    for (uint64_t i = 0; i < n; ++i) {
+        temp1[i] = n * v[i].key / std::numeric_limits<uint64_t>::max();
+        temp[temp1[i]]++;
+    }
+    for (uint64_t i = 0; i < n; ++i) {
+        b[i].resize(temp[i]);
+    }
+    for (uint64_t i = 0; i < n; ++i) {
+        b[temp1[i]].push_back(v[i]);
+    }
+    for (uint64_t i = 0; i < n; ++i) {
+        if (b[i].get_size() > 1) {
+            merge_sort(b[i], v);
+        }
+        for (uint64_t j = 0; j < b[i].get_size(); j++) {
+            std::cout << b[i][j].key << "\t" << b[i][j].value << '\n';
+        }
+    }
 }
 \end{lstlisting}
 
@@ -191,31 +208,31 @@ void counting_sort(my_vector<size_t>& cnt, my_vector<my_pair>& arr) {
 
 \begin{lstlisting}[language=C++]
 int main() {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(0);
-    my_vector<size_t> cnt(MAX_KEY);
-
-    for (size_t i = 0; i < cnt.size(); ++i) {
-        cnt[i] = 0;
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    my_vector<my_pair> v(1000000);
+    my_pair p;
+    uint64_t m = 0;
+    while (std::cin >> p.key >> p.value) {
+        p.value[SIZE_OF_STRING - 1] = '\0';
+        v.push_back(p);
     }
-
-    my_vector<my_pair> arr;
-    my_pair pair;
-
-    while (std::cin >> pair.key >> pair.value) {
-        ++cnt[pair.key];
-        arr.push_back(pair);
-    }
-    counting_sort(cnt, arr);
-
-    for (size_t i = 0; i < arr.size(); ++i) {
-        std::cout << arr[i].key << '\t' << arr[i].value << '\n';
-    }
+    bucket_sort(v, m);
     return 0;
 }
 \end{lstlisting}
 
 \subsection*{Дневник отладки}
+
+За время выполнения лабораторной работы было исправлено несколько проблем, из-за которых решение не проходило тесты.
+
+В основном решение не проходило с ошибками \texttt{ML}(\texttt{Memory limit exceeded}) и \texttt{TL}(\texttt{Time limit exceeded}). 
+
+Для решения первой проблемы пришлось использовать сортировку слиянием вместо используемой изначально сортировки вставками. Также были сведены к минимуму долгие арфиметические операции.
+
+Чтобы решить вторую проблему, требовалось уменьшить использование памяти программой. Для этого, вместо динамического выделения памяти автоматически во время операции \texttt{push\_back}, было решено выделять память вектора заранее, просчитав точное количество требуемой памяти. Также вместо аллоцирования дополнительной памяти под буфер для сортировки карманов использовался вектор с исходными данными.
+
+Данные исправления позволили решить проблемы, из-за которых решение не проходило чекер.
 
 \subsection*{Тест производительности}
 
@@ -224,23 +241,26 @@ int main() {
 что рост времени работы при увеличении объема входных данных
 согласуется с заявленной сложностью.
 
-Сортировка подсчётом работает за линейное время. Если обратить на код программы, то видно, что реализация алгоритма состоит из нескольких последовательных циклов. Для большей наглядности приведём таблицу, в которой написанная сортировка сравнивается со стандартными функция языка C++.
+Карманная сортировка в лучшем случае работает за линейное время. Если посмотреть на код программы, то видно, что реализация алгоритма состоит из нескольких последовательных циклов и одного вложенного для вывода результата. Также в одном из циклов мы видим вызов функции, которая реализует сортировку слиянием элементов карманов. Из-за того, что значения ключей в массиве, который требуется отсортировать, равномерно распределены, в лучшем случае на каждый карман приходится по одному элементу, поэтому сортировать элементы в карманах в этом случае не нужно.
+
+Для большей наглядности приведём таблицу, в которой написанная сортировка сравнивается со стандартными функция языка C++.
 
 \begin{center}
 \begin{tabular}{ |c|c|c|c| }
     \hline
     Количество пар "ключ-значение" & counting\_sort(), мс & std::sort(), мс & std::stable$\_$sort(), мс \\
     \hline
-    10000 & 5747 & 2084 & 976 \\
-    100000 & 7019 & 25295 & 11696 \\
-    1000000 & 32683 & 284048 & 149074 \\
-    10000000 & 560556 & 3049667 & 1603556 \\
-    100000000 & 6310612 & 33929127 & 18263965 \\
+    1 & 3786 & 2572 & 6751 \\
+    10 & 4151 & 5474 & 1681 \\
+    100 & 496 & 6785 & 6522 \\
+    1000 & 6881 & 9948 & 6867 \\
+    10000 & 88688 & 125848 & 77980 \\
+    100000 & 1059858 & 1563252 & 941387 \\
     \hline
     \end{tabular}
 \end{center}
 
-На больших объёмах входных данных (от ста тысяч до десяти миллионов) становится заметно, что время сортировки пропорционально количеству пар "ключ-значение". Причём написанная функция оказывается заметно быстрее стандартных функций языка C++, так как те используют алгоритмы с временной сложностью O($n \log{n}$).
+На больших объёмах входных данных становится заметно, что время сортировки пропорционально количеству пар "ключ-значение". Причём на достаточно больших объемах данных написанная функция оказывается заметно быстрее стандартных функций языка C++, так как те используют алгоритмы с временной сложностью O($n \log{n}$).
 
 Ниже приведена программа benchmark.cpp, использовавшаяся для определения времени работы функций:
 \begin{lstlisting}[language=C++]
@@ -249,6 +269,7 @@ int main() {
 #include <string>
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 
 #include "main.cpp"
 
@@ -257,60 +278,59 @@ bool cmp(my_pair a, my_pair b) {
 }
 
 int main() {
+    std::ofstream out("outfile.txt", std::ios::app);
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> key_dist(0, 100000);
+    std::uniform_int_distribution<uint64_t> key_dist;
     std::uniform_int_distribution<> char_dist(0, 25);
-    for (int k = 1; k < 1000000000; k *= 10) {
-        std::cout << k << '\t';
+    for (int k = 1; k <= 100000; k *= 10) {
+
+        out << k << '\t';
         std::vector<my_pair> benchmark_data;
-
-        my_vector<size_t> cnt(MAX_KEY);
-
-        for (size_t i = 0; i < cnt.size(); ++i) {
-            cnt[i] = 0;
-        }
-
-        my_vector<my_pair> arr;
+        my_vector<my_pair> arr(k);
         my_pair pair;
         for (int i = 0; i < k; ++i) {
             pair.key = key_dist(gen);
-            pair.value = static_cast<char>('a' + char_dist(gen));
-            ++cnt[pair.key];
+            for (int j = 0; j < SIZE_OF_STRING - 1; ++j) {
+                pair.value[j] = static_cast<char>('a' + char_dist(gen));
+            }
+            pair.value[SIZE_OF_STRING - 1] = '\0';
             arr.push_back(pair);
+            std::cout << k << '\n';
             benchmark_data.push_back(pair);
         }
 
         auto start1 = std::chrono::high_resolution_clock::now();
-        counting_sort(cnt, arr);
+        bucket_sort(arr);
         auto finish1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(finish1 - start1);
-        std::cout << duration1.count() << '\t';
+        out << duration1.count() << '\t';
 
         auto start2 = std::chrono::high_resolution_clock::now();
         sort(benchmark_data.begin(), benchmark_data.end(), cmp);
         auto finish2 = std::chrono::high_resolution_clock::now();
         auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(finish2 - start2);
 
-        std::cout << duration2.count() << '\t';
+        out << duration2.count() << '\t';
 
         auto start3 = std::chrono::high_resolution_clock::now();
         std::stable_sort(benchmark_data.begin(), benchmark_data.end(), cmp);
         auto finish3 = std::chrono::high_resolution_clock::now();
         auto duration3 = std::chrono::duration_cast<std::chrono::microseconds>(finish3 - start3);
 
-        std::cout << duration3.count() << '\t';
-        std::cout << std::endl;
+        out << duration3.count() << '\t';
+        out << '\n';
 
     }
     return 0;
 }
 
 
+
 \end{lstlisting}
 
 \subsection*{Выводы}
 
-В ходе выполнения данной работы были изучены алгоритмы линейных сортировок, также был реализован алгоритм сортировки подсчетом. При написании алгоритма не возникло проблем, так как он достаточно прост и понятен. Реализованный алгоритм сортировки имеет множество применений. Линейная временная сложность делает алгоритм эффективным для задач с ограниченным диапазоном значений.
+В ходе выполнения данной работы были изучены алгоритмы линейных сортировок, также был реализован алгоритм карманной сортировки. При написании алгоритма возникло несколько проблем, связанных со скоростью работы программы и использованием памяти, которые были успешно решены. Реализованный алгоритм сортировки имеет множество применений. Линейная временная сложность делает алгоритм эффективным для задач с ограниченным диапазоном значений и равномерно распределенными неотсортированными данными.
 
 \end{document}
