@@ -156,7 +156,6 @@ public:
         return getSizeUtil(root);
     }
 
-
 private:
     size_t getSizeUtil(const TNode* node) {
         if (node != nullptr) {
@@ -182,7 +181,7 @@ private:
         printTreeUtil(head->right, space);
         std::cout << '\n';
         for (int i = 10; i < space; i++)
-            std::cout << "-";
+            std::cout << " ";
         std::cout << head->data << "\n";
         printTreeUtil(head->left, space);
     }
@@ -225,6 +224,25 @@ private:
         return new_head;
     }
 
+    TNode* balance(TNode* head) {
+        int bal = height(head->left) - height(head->right);
+        if (bal > 1) {
+            if (height(head->left) >= height(head->right)) {
+                return rightRotation(head);
+            } else {
+                head->left = leftRotation(head->left);
+                return rightRotation(head);
+            }
+        } else if (bal < -1) {
+            if (height(head->right) >= height(head->left)) {
+                return leftRotation(head);
+            } else {
+                head->right = rightRotation(head->right);
+                return leftRotation(head);
+            }
+        }
+        return head;
+    }
 
     TNode* insertUtil(TNode* head, T x) {
         if (head == nullptr) {
@@ -240,23 +258,7 @@ private:
         else if (x > head->data)
             head->right = insertUtil(head->right, x);
         head->height = 1 + std::max(height(head->left), height(head->right));
-        int bal = height(head->left) - height(head->right);
-        if (bal > 1) {
-            if (x < head->left->data) {
-                return rightRotation(head);
-            } else {
-                head->left = leftRotation(head->left);
-                return rightRotation(head);
-            }
-        } else if (bal < -1) {
-            if (x > head->right->data) {
-                return leftRotation(head);
-            } else {
-                head->right = rightRotation(head->right);
-                return leftRotation(head);
-            }
-        }
-        return head;
+        return balance(head);
     }
     TNode* removeUtil(TNode* head, T x) {
         if (head == nullptr)
@@ -284,25 +286,10 @@ private:
         if (head == nullptr)
             return head;
         head->height = 1 + std::max(height(head->left), height(head->right));
-        int bal = height(head->left) - height(head->right);
-        if (bal > 1) {
-            if (height(head->left) >= height(head->right)) {
-                return rightRotation(head);
-            } else {
-                head->left = leftRotation(head->left);
-                return rightRotation(head);
-            }
-        } else if (bal < -1) {
-            if (height(head->right) >= height(head->left)) {
-                return leftRotation(head);
-            } else {
-                head->right = rightRotation(head->right);
-                return leftRotation(head);
-            }
-        }
-        return head;
+        return balance(head);
     }
 };
+
 
 
 int main() {
