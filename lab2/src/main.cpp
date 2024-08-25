@@ -11,49 +11,49 @@
 
 class AVLTreeData {
 public:
-    char value[STRING_SIZE];
-    uint64_t key;
+    char key[STRING_SIZE];
+    uint64_t value;
     AVLTreeData() {
-        std::fill_n(value, STRING_SIZE, '\0');
-        key = 0;
+        std::fill_n(key, STRING_SIZE, '\0');
+        value = 0;
     }
     ~AVLTreeData() {
     }
     bool operator<(const AVLTreeData& other) const {
-        return strcmp(value, other.value) < 0;
+        return strcmp(key, other.key) < 0;
     }
     bool operator==(const AVLTreeData& other) const {
-        return strcmp(value, other.value) == 0;
+        return strcmp(key, other.key) == 0;
     }
     bool operator!=(const AVLTreeData& other) const {
-        return strcmp(value, other.value) != 0;
+        return strcmp(key, other.key) != 0;
     }
     bool operator>(const AVLTreeData& other) const {
-        return strcmp(value, other.value) > 0;
+        return strcmp(key, other.key) > 0;
     }
 
     char& operator[](size_t idx) {
         if (idx >= STRING_SIZE) {
             throw std::out_of_range("Index out of range");
         }
-        return value[idx];
+        return key[idx];
     }
 
     const char& operator[](size_t idx) const {
         if (idx >= STRING_SIZE) {
             throw std::out_of_range("Index out of range");
         }
-        return value[idx];
+        return key[idx];
     }
     AVLTreeData(const AVLTreeData& other) {
-        std::copy(other.value, other.value + STRING_SIZE, value);
-        key = other.key;
+        std::copy(other.key, other.key + STRING_SIZE, key);
+        value = other.value;
     }
 
     AVLTreeData& operator=(const AVLTreeData& other) {
         if (this != &other) {
-            std::copy(other.value, other.value + STRING_SIZE, value);
-            key = other.key;
+            std::copy(other.key, other.key + STRING_SIZE, key);
+            value = other.value;
         }
         return *this;
     }
@@ -62,14 +62,14 @@ public:
         for (size_t i = 0; i < STRING_SIZE; ++i) {
             os << data[i];
         }
-        os << ", " << data.key;
+        os << ", " << data.value;
         return os;
     }
     friend std::istream& operator>>(std::istream& is, AVLTreeData& data) {
-        is >> data.value;
+        is >> data.key;
         for (size_t i = 0; i < STRING_SIZE; i++) {
-            if (data.value[i] != '\0') {
-                data.value[i] = std::tolower(data.value[i]);
+            if (data.key[i] != '\0') {
+                data.key[i] = std::tolower(data.key[i]);
             }
         }
         return is;
@@ -147,8 +147,8 @@ public:
         if (file.read(reinterpret_cast<char *>(&fileSize), sizeof(size_t))) {
             for (size_t i = 0; i < fileSize; ++i) {
                 T data;
-                file.read(data.value, STRING_SIZE);
-                file.read(reinterpret_cast<char*>(&data.key), sizeof(data.key));
+                file.read(data.key, STRING_SIZE);
+                file.read(reinterpret_cast<char*>(&data.value), sizeof(data.value));
                 insert(data);
             }
         }
@@ -173,8 +173,8 @@ private:
         if (node == nullptr) {
             return;
         }
-        file.write(node->data.value, STRING_SIZE);
-        file.write(reinterpret_cast<const char*>(&node->data.key), sizeof(node->data.key));
+        file.write(node->data.key, STRING_SIZE);
+        file.write(reinterpret_cast<const char*>(&node->data.value), sizeof(node->data.value));
 
         saveToFileUtil(file, node->left);
         saveToFileUtil(file, node->right);
@@ -187,7 +187,7 @@ private:
         printTreeUtil(head->right, space);
         std::cout << '\n';
         for (int i = 10; i < space; i++)
-            std::cout << "-";
+            std::cout << " ";
         std::cout << head->data << "\n";
         printTreeUtil(head->left, space);
     }
@@ -213,12 +213,12 @@ private:
     }
 
     TNode* rightRotation(TNode* head) {
-        TNode* new_head = head->left;
-        head->left = new_head->right;
-        new_head->right = head;
+        TNode* newhead = head->left;
+        head->left = newhead->right;
+        newhead->right = head;
         head->height = 1 + std::max(height(head->left), height(head->right));
-        new_head->height = 1 + std::max(height(new_head->left), height(new_head->right));
-        return new_head;
+        newhead->height = 1 + std::max(height(newhead->left), height(newhead->right));
+        return newhead;
     }
 
     TNode* leftRotation(TNode* head) {
@@ -325,23 +325,23 @@ int main() {
     while (std::cin >> command) {
         TAVLTree<AVLTreeData>::TNode* node;
         if (command[0] == '+') {
-            AVLTreeData key;
-            std::cin >> key >> key.key;
-            node = tree.search(key);
+            AVLTreeData data;
+            std::cin >> data >> data.value;
+            node = tree.search(data);
             if (node == nullptr) {
-                tree.insert(key);
+                tree.insert(data);
                 std::cout << "OK" << '\n';
             } else {
                 std::cout << "Exist" << '\n';
             }
         } else if (command[0] == '-') {
-            AVLTreeData key;
-            std::cin >> key;
-            node = tree.search(key);
+            AVLTreeData data;
+            std::cin >> data;
+            node = tree.search(data);
             if (node == nullptr) {
                 std::cout << "NoSuchWord" << '\n';
             } else {
-                tree.remove(key);
+                tree.remove(data);
                 std::cout << "OK" << '\n';
             }
         
@@ -351,7 +351,7 @@ int main() {
             AVLTreeData path;
             std::cin >> path;
             if (action[0] == 's') {   
-                std::ofstream file(path.value, std::ios::binary | std::ios::trunc);
+                std::ofstream file(path.key, std::ios::binary | std::ios::trunc);
                 size_t size = tree.getSize();
                 file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
                 if (size > 0) {
@@ -361,7 +361,7 @@ int main() {
                 file.close();
 
             } else {
-                std::ifstream file(path.value, std::ios::binary);
+                std::ifstream file(path.key, std::ios::binary);
                 tree.LoadFromFile(file);
                 std::cout << "OK\n";
                 file.close();
@@ -373,7 +373,7 @@ int main() {
             if (node == nullptr) {
                 std::cout << "NoSuchWord" << '\n';
             } else {
-                std::cout << "OK: " << node->data.key << '\n';
+                std::cout << "OK: " << node->data.value << '\n';
             }
         }
         //tree.printTree();
