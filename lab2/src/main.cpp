@@ -7,6 +7,12 @@
 #include <utility>
 #include <cstring>
 
+#include <random>
+#include <string>
+#include <chrono>
+#include <vector>
+#include <map>
+
 #define STRING_SIZE 257
 
 class AVLTreeData {
@@ -114,11 +120,6 @@ public:
 
     TNode* search(const T x) { return searchUtil(root, x); }
 
-    void inorder() {
-        inorderUtil(root);
-        std::cout << '\n';
-    }
-
     void printTree() { printTreeUtil(root, 0); }
 
     void clear() {
@@ -187,7 +188,7 @@ private:
         printTreeUtil(head->right, space);
         std::cout << '\n';
         for (int i = 10; i < space; i++)
-            std::cout << " ";
+            std::cout << "-";
         std::cout << head->data << "\n";
         printTreeUtil(head->left, space);
     }
@@ -228,14 +229,6 @@ private:
         head->height = 1 + std::max(height(head->left), height(head->right));
         new_head->height = 1 + std::max(height(new_head->left), height(new_head->right));
         return new_head;
-    }
-
-    void inorderUtil(TNode* head) {
-        if (head == nullptr)
-            return;
-        inorderUtil(head->left);
-        std::cout << head->data << " ";
-        inorderUtil(head->right);
     }
 
 
@@ -316,7 +309,6 @@ private:
         return head;
     }
 };
-
 
 
 int main() {
