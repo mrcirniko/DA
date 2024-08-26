@@ -7,6 +7,7 @@
 \usepackage{ulem}
 \usepackage[utf8]{inputenc}
 \usepackage[russian]{babel}
+\usepackage{verbatim}
 
 \begin{document}
 
@@ -15,7 +16,7 @@
 Выполнил студент группы М80-208Б-22 МАИ \textit{Цирулев Николай}.
 
 \subsection*{Условие}
-\begin{enumerate}
+\begin{itemize}
 \item
 
 
@@ -35,64 +36,140 @@
 
 \item
     Вариант задания: AVL-дерево.
-\end{enumerate}
+\end{itemize}
 
 \subsection*{Метод решения}
 
-Для реализации словаря был разработан класс его элементов (пар "ключ-значение"), где ключ реализован в виде статического массива символов. Для хранения и управления данными был реализован шаблонный класс \texttt{TAVLTree}, представляющий собой AVL-дерево. Также была написана основная функция, которая осуществляет обработку ввода пользователя, реализуя функционал добавления, удаления, поиска и сохранения/загрузки данных словаря.
+Для реализации словаря был разработан класс его элементов (пар "ключ-значение"), где ключ реализован в виде статического массива символов. Для хранения и управления данными был реализован шаблонный класс \texttt{TAVLTree}, представляющий собой AVL-дерево.
+
+AVL-дерево представляет собой бинарное дерево поиска со сбалансированной высотой: для каждого узла x высота левого и правого поддеревьев x отличается не более чем на 1.
+
+Вставка и удаление элементов были реализованы с использованием функции \texttt{balance()}. Данная функция предназначена для балансировки AVL-дерева с использованием левого и правого поворотов. 
+
+Балансировка высоты дерева достигается следующими двумя операциями:
+\begin{itemize}
+    \item
+    Левый поворот дерева:
+    \begin{verbatim}
+        y                              x
+       / \                            / \
+      x   C     -------------->      A   y
+     / \                                / \
+    A   B                              B   C
+    \end{verbatim}
+    \item
+    Правый поворот дерева:
+    \begin{verbatim}
+        x                              y
+       / \                            / \
+      A   y      ------------->      x   C
+         / \                        / \
+        B   C                      A   B
+    \end{verbatim}
+    где x и y — внутренние узлы, а A, B и C — AVL-деревья. 
+\end{itemize}
+
+Так как после каждого удаления и каждой вставки мы балансируем дерево, то разница высот между левым и правым поддеревом корневого узла перед каждой балансировкой <= 2. Тогда требуется рассмотреть всего 4 случая:
+\begin{enumerate}
+    \item
+    \begin{verbatim}
+        y                              x
+       / \      Правый поворот        / \
+      x   h     -------------->     h+1  y
+     / \                                / \
+   h+1 h/h+1                         h/h+1 h
+    \end{verbatim}
+
+    \item
+    \begin{verbatim}
+        y                       y                      z
+       / \        Левый        / \      Правый        / \
+      x   h      ------>      z   h     ------>     h+1  y
+     / \         поворот     / \        поворот         / \
+    h  h/h+1               h+1 h/h+1                 h/h+1 h
+    \end{verbatim}
+
+    \item
+    \begin{verbatim}
+        x                              y
+       / \       Левый поворот        / \
+      h   y      ------------->      x  h+1
+         / \                        / \
+     h/h+1 h+1                     h h/h+1
+    \end{verbatim}
+
+    \item
+    \begin{verbatim}
+        y                       y                      z
+       / \       Правый        / \       Левый        / \
+      h   x      ------>      h   z     ------>      y  h+1
+         / \     поворот         / \    поворот     / \
+      h/h+1 h                h/h+1 h+1             h h/h+1
+    \end{verbatim}
+    где x, y, z — внутренние узлы, а h и h+1 - AVL-деревья c высотами h и h+1 соответственно.
+\end{enumerate}
 
 \subsection*{Описание программы}
 
 Исходный код программы содержится в файле main.cpp. В программе реализованы классы \texttt{AVLTreeData} и \texttt{TAVLTree}, которые обеспечивают работу словаря с использованием AVL-дерева. В классе \texttt{AVLTreeData} реализованы необходимые методы, конструкторы, деструкторы, а также перегружены операторы сравнения и индексации для корректной работы с данными:
 
 \begin{lstlisting}[language=C++]
+#include <iostream>
+#include <cstdint>
+#include <algorithm>
+#include <cstddef>
+#include <fstream>
+#include <stdexcept>
+#include <utility>
+#include <cstring>
+
 #define STRING_SIZE 257
 
 class AVLTreeData {
 public:
-    char value[STRING_SIZE];
-    uint64_t key;
+    char key[STRING_SIZE];
+    uint64_t value;
     AVLTreeData() {
-        std::fill_n(value, STRING_SIZE, '\0');
-        key = 0;
+        std::fill_n(key, STRING_SIZE, '\0');
+        value = 0;
     }
     ~AVLTreeData() {
     }
     bool operator<(const AVLTreeData& other) const {
-        return strcmp(value, other.value) < 0;
+        return strcmp(key, other.key) < 0;
     }
     bool operator==(const AVLTreeData& other) const {
-        return strcmp(value, other.value) == 0;
+        return strcmp(key, other.key) == 0;
     }
     bool operator!=(const AVLTreeData& other) const {
-        return strcmp(value, other.value) != 0;
+        return strcmp(key, other.key) != 0;
     }
     bool operator>(const AVLTreeData& other) const {
-        return strcmp(value, other.value) > 0;
+        return strcmp(key, other.key) > 0;
     }
 
     char& operator[](size_t idx) {
         if (idx >= STRING_SIZE) {
             throw std::out_of_range("Index out of range");
         }
-        return value[idx];
+        return key[idx];
     }
 
     const char& operator[](size_t idx) const {
         if (idx >= STRING_SIZE) {
             throw std::out_of_range("Index out of range");
         }
-        return value[idx];
+        return key[idx];
     }
     AVLTreeData(const AVLTreeData& other) {
-        std::copy(other.value, other.value + STRING_SIZE, value);
-        key = other.key;
+        std::copy(other.key, other.key + STRING_SIZE, key);
+        value = other.value;
     }
 
     AVLTreeData& operator=(const AVLTreeData& other) {
         if (this != &other) {
-            std::copy(other.value, other.value + STRING_SIZE, value);
-            key = other.key;
+            std::copy(other.key, other.key + STRING_SIZE, key);
+            value = other.value;
         }
         return *this;
     }
@@ -101,26 +178,21 @@ public:
         for (size_t i = 0; i < STRING_SIZE; ++i) {
             os << data[i];
         }
-        os << ", " << data.key;
+        os << ", " << data.value;
         return os;
     }
     friend std::istream& operator>>(std::istream& is, AVLTreeData& data) {
-        is >> data.value;
+        is >> data.key;
         for (size_t i = 0; i < STRING_SIZE; i++) {
-            if (data.value[i] != '\0') {
-                data.value[i] = std::tolower(data.value[i]);
+            if (data.key[i] != '\0') {
+                data.key[i] = std::tolower(data.key[i]);
             }
         }
         return is;
     }
 };
-\end{lstlisting}
 
-Структура \texttt{AVLTreeData} используется для хранения пары "ключ-значение" , где ключом является статический массив \texttt{char}-ов длина которого задается переменной \texttt{STRING\_SIZE}, а значением — 64-битное число типа \texttt{uint64\_t}. Благодаря перегруженным операторам, обеспечивается удобное и корректное чтение и сравнение строк, что позволяет использовать эту структуру в AVL-дереве.
 
-Класс \texttt{TAVLTree} реализует AVL-дерево — сбалансированную структуру данных, которая поддерживает эффективные операции вставки, удаления и поиска. Внутри класса определен вложенный класс \texttt{TNode}, который представляет собой узел дерева:
-
-\begin{lstlisting}[language=C++]
 template <typename T> 
 class TAVLTree {
 public:
@@ -158,11 +230,6 @@ public:
 
     TNode* search(const T x) { return searchUtil(root, x); }
 
-    void inorder() {
-        inorderUtil(root);
-        std::cout << '\n';
-    }
-
     void printTree() { printTreeUtil(root, 0); }
 
     void clear() {
@@ -191,8 +258,8 @@ public:
         if (file.read(reinterpret_cast<char *>(&fileSize), sizeof(size_t))) {
             for (size_t i = 0; i < fileSize; ++i) {
                 T data;
-                file.read(data.value, STRING_SIZE);
-                file.read(reinterpret_cast<char*>(&data.key), sizeof(data.key));
+                file.read(data.key, STRING_SIZE);
+                file.read(reinterpret_cast<char*>(&data.value), sizeof(data.value));
                 insert(data);
             }
         }
@@ -205,7 +272,6 @@ public:
         return getSizeUtil(root);
     }
 
-
 private:
     size_t getSizeUtil(const TNode* node) {
         if (node != nullptr) {
@@ -217,8 +283,8 @@ private:
         if (node == nullptr) {
             return;
         }
-        file.write(node->data.value, STRING_SIZE);
-        file.write(reinterpret_cast<const char*>(&node->data.key), sizeof(node->data.key));
+        file.write(node->data.key, STRING_SIZE);
+        file.write(reinterpret_cast<const char*>(&node->data.value), sizeof(node->data.value));
 
         saveToFileUtil(file, node->left);
         saveToFileUtil(file, node->right);
@@ -231,7 +297,7 @@ private:
         printTreeUtil(head->right, space);
         std::cout << '\n';
         for (int i = 10; i < space; i++)
-            std::cout << "-";
+            std::cout << " ";
         std::cout << head->data << "\n";
         printTreeUtil(head->left, space);
     }
@@ -257,12 +323,12 @@ private:
     }
 
     TNode* rightRotation(TNode* head) {
-        TNode* new_head = head->left;
-        head->left = new_head->right;
-        new_head->right = head;
+        TNode* newhead = head->left;
+        head->left = newhead->right;
+        newhead->right = head;
         head->height = 1 + std::max(height(head->left), height(head->right));
-        new_head->height = 1 + std::max(height(new_head->left), height(new_head->right));
-        return new_head;
+        newhead->height = 1 + std::max(height(newhead->left), height(newhead->right));
+        return newhead;
     }
 
     TNode* leftRotation(TNode* head) {
@@ -274,14 +340,25 @@ private:
         return new_head;
     }
 
-    void inorderUtil(TNode* head) {
-        if (head == nullptr)
-            return;
-        inorderUtil(head->left);
-        std::cout << head->data << " ";
-        inorderUtil(head->right);
+    TNode* balance(TNode* head) {
+        int bal = height(head->left) - height(head->right);
+        if (bal > 1) {
+            if (height(head->left) >= height(head->right)) {
+                return rightRotation(head);
+            } else {
+                head->left = leftRotation(head->left);
+                return rightRotation(head);
+            }
+        } else if (bal < -1) {
+            if (height(head->right) >= height(head->left)) {
+                return leftRotation(head);
+            } else {
+                head->right = rightRotation(head->right);
+                return leftRotation(head);
+            }
+        }
+        return head;
     }
-
 
     TNode* insertUtil(TNode* head, T x) {
         if (head == nullptr) {
@@ -297,23 +374,7 @@ private:
         else if (x > head->data)
             head->right = insertUtil(head->right, x);
         head->height = 1 + std::max(height(head->left), height(head->right));
-        int bal = height(head->left) - height(head->right);
-        if (bal > 1) {
-            if (x < head->left->data) {
-                return rightRotation(head);
-            } else {
-                head->left = leftRotation(head->left);
-                return rightRotation(head);
-            }
-        } else if (bal < -1) {
-            if (x > head->right->data) {
-                return leftRotation(head);
-            } else {
-                head->right = rightRotation(head->right);
-                return leftRotation(head);
-            }
-        }
-        return head;
+        return balance(head);
     }
     TNode* removeUtil(TNode* head, T x) {
         if (head == nullptr)
@@ -341,54 +402,35 @@ private:
         if (head == nullptr)
             return head;
         head->height = 1 + std::max(height(head->left), height(head->right));
-        int bal = height(head->left) - height(head->right);
-        if (bal > 1) {
-            if (height(head->left) >= height(head->right)) {
-                return rightRotation(head);
-            } else {
-                head->left = leftRotation(head->left);
-                return rightRotation(head);
-            }
-        } else if (bal < -1) {
-            if (height(head->right) >= height(head->left)) {
-                return leftRotation(head);
-            } else {
-                head->right = rightRotation(head->right);
-                return leftRotation(head);
-            }
-        }
-        return head;
+        return balance(head);
     }
 };
-\end{lstlisting}
-Основные методы класса \texttt{TAVLTree} включают функции для вставки, удаления, поиска и обхода элементов дерева. Также для удобной работы с деревом и тестирования программы был реализован вывод дерева (метод \texttt{printTree()}). Важной частью реализации является поддержание сбалансированности дерева с помощью правого и левого поворотов, что обеспечивает время выполнения основных операций за $O(log n)$.
 
-В функции \texttt{main} обрабатываются команды, поступающие от пользователя.
 
-\begin{lstlisting}[language=C++]
+
 int main() {
     TAVLTree<AVLTreeData> tree;
     AVLTreeData command;
     while (std::cin >> command) {
         TAVLTree<AVLTreeData>::TNode* node;
         if (command[0] == '+') {
-            AVLTreeData key;
-            std::cin >> key >> key.key;
-            node = tree.search(key);
+            AVLTreeData data;
+            std::cin >> data >> data.value;
+            node = tree.search(data);
             if (node == nullptr) {
-                tree.insert(key);
+                tree.insert(data);
                 std::cout << "OK" << '\n';
             } else {
                 std::cout << "Exist" << '\n';
             }
         } else if (command[0] == '-') {
-            AVLTreeData key;
-            std::cin >> key;
-            node = tree.search(key);
+            AVLTreeData data;
+            std::cin >> data;
+            node = tree.search(data);
             if (node == nullptr) {
                 std::cout << "NoSuchWord" << '\n';
             } else {
-                tree.remove(key);
+                tree.remove(data);
                 std::cout << "OK" << '\n';
             }
         
@@ -398,7 +440,7 @@ int main() {
             AVLTreeData path;
             std::cin >> path;
             if (action[0] == 's') {   
-                std::ofstream file(path.value, std::ios::binary | std::ios::trunc);
+                std::ofstream file(path.key, std::ios::binary | std::ios::trunc);
                 size_t size = tree.getSize();
                 file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
                 if (size > 0) {
@@ -408,7 +450,7 @@ int main() {
                 file.close();
 
             } else {
-                std::ifstream file(path.value, std::ios::binary);
+                std::ifstream file(path.key, std::ios::binary);
                 tree.LoadFromFile(file);
                 std::cout << "OK\n";
                 file.close();
@@ -420,7 +462,7 @@ int main() {
             if (node == nullptr) {
                 std::cout << "NoSuchWord" << '\n';
             } else {
-                std::cout << "OK: " << node->data.key << '\n';
+                std::cout << "OK: " << node->data.value << '\n';
             }
         }
     }
@@ -430,30 +472,23 @@ int main() {
 
 \subsection*{Дневник отладки}
 
+При тестировании программы была обнаружена ошибка - была неверно реализована перегрузка операторов сравнения строк для класса \texttt{AVLTreeData}, при сравнении строк разных длин результат был непредсказуем, поэтому было решено использовать встроенную в язык функцию \texttt{strcmp()}.
+
 \subsection*{Тест производительности}
 
-Померить время работы кода лабораторной и теста производительности
-на разных объемах входных данных. Сравнить результаты. Проверить,
-что рост времени работы при увеличении объема входных данных
-согласуется с заявленной сложностью.
-
-Сортировка подсчётом работает за линейное время. Если обратить на код программы, то видно, что реализация алгоритма состоит из нескольких последовательных циклов. Для большей наглядности приведём таблицу, в которой написанная сортировка сравнивается со стандартными функция языка C++.
+Померим скорость работы кода лабораторной (будем записывать n-е количество элементов а потом удалять) и сравним с встроенной в C++ структурой \texttt{std::map}. Как видим, на больших значениях от $10^4$ до $10^6$ наш алгоритм идет наравне с библиотечным, это связано с тем, что в реализации \texttt{std::map} используется красно-черное дерево со временем операций вставки и удаления $O(log(n))$, где n - количество элементов в дереве. Такую же сложность имеют аналогичные операции в AVL-дереве.
 
 \begin{center}
 \begin{tabular}{ |c|c|c|c| }
     \hline
-    Количество пар "ключ-значение" & counting\_sort(), мс & std::sort(), мс & std::stable$\_$sort(), мс \\
+    Количество пар "ключ-значение" & TAVLTree, мс & std::map, мс \\
     \hline
-    10000 & 5747 & 2084 & 976 \\
-    100000 & 7019 & 25295 & 11696 \\
-    1000000 & 32683 & 284048 & 149074 \\
-    10000000 & 560556 & 3049667 & 1603556 \\
-    100000000 & 6310612 & 33929127 & 18263965 \\
+    10000 & 139125 & 246289 \\
+    100000 & 1193582 & 1654637 \\
+    1000000 & 12535842 & 16596308 \\
     \hline
     \end{tabular}
 \end{center}
-
-На больших объёмах входных данных (от ста тысяч до десяти миллионов) становится заметно, что время сортировки пропорционально количеству пар "ключ-значение". Причём написанная функция оказывается заметно быстрее стандартных функций языка C++, так как те используют алгоритмы с временной сложностью O($n \log{n}$).
 
 Ниже приведена программа benchmark.cpp, использовавшаяся для определения времени работы функций:
 \begin{lstlisting}[language=C++]
@@ -462,61 +497,77 @@ int main() {
 #include <string>
 #include <algorithm>
 #include <chrono>
+#include <vector>
+#include <map>
 
 #include "main.cpp"
 
-bool cmp(my_pair a, my_pair b) {
-    return a.key < b.key;
-}
+template <typename KeyT, typename ValueT>
+struct test_pair {
+    ValueT value;
+    KeyT key;
+    bool operator<(const test_pair& other) const {
+        return key < other.key;
+    }
+    bool operator>(const test_pair& other) const {
+        return key > other.key;
+    }
+    bool operator==(const test_pair& other) const {
+        return key == other.key;
+    }
+    bool operator!=(const test_pair& other) const {
+        return key != other.key;
+    }
+};
 
 int main() {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> key_dist(0, 100000);
+    std::uniform_int_distribution<uint8_t> key_dist;
+    std::uniform_int_distribution<uint8_t> value_dist;
     std::uniform_int_distribution<> char_dist(0, 25);
-    for (int k = 1; k < 1000000000; k *= 10) {
-        std::cout << k << '\t';
-        std::vector<my_pair> benchmark_data;
 
-        my_vector<size_t> cnt(MAX_KEY);
+    for (size_t k = 10000; k <= 10000000; k *= 10) {
+        std::cout << k << " & ";
+        std::map<uint8_t, uint8_t> map;
+        TAVLTree<test_pair<uint8_t, uint8_t>> tree;
+        test_pair<uint8_t, uint8_t> data;
+        std::vector<test_pair<uint8_t, uint8_t>> vec;
 
-        for (size_t i = 0; i < cnt.size(); ++i) {
-            cnt[i] = 0;
-        }
-
-        my_vector<my_pair> arr;
-        my_pair pair;
-        for (int i = 0; i < k; ++i) {
-            pair.key = key_dist(gen);
-            pair.value = static_cast<char>('a' + char_dist(gen));
-            ++cnt[pair.key];
-            arr.push_back(pair);
-            benchmark_data.push_back(pair);
+        for (size_t i = 0; i < k; ++i) {
+            data.value = key_dist(gen);
+            data.key = value_dist(gen);
+            vec.push_back(data);
         }
 
         auto start1 = std::chrono::high_resolution_clock::now();
-        counting_sort(cnt, arr);
+        for (size_t i = 0; i < k; ++i) {
+            tree.insert(vec[i]);
+            
+        }
+        for (size_t i = 0; i < k; ++i) {
+            tree.remove(vec[i]);    
+        }
         auto finish1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(finish1 - start1);
-        std::cout << duration1.count() << '\t';
+        std::cout << duration1.count() << " & ";
 
         auto start2 = std::chrono::high_resolution_clock::now();
-        sort(benchmark_data.begin(), benchmark_data.end(), cmp);
+        for (size_t i = 0; i < k; ++i) {
+            map[vec[i].key] = vec[i].value;
+            
+        }
+        for (size_t i = 0; i < k; ++i) {
+            map.erase(vec[i].key);  
+        }
         auto finish2 = std::chrono::high_resolution_clock::now();
         auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(finish2 - start2);
+        std::cout << duration2.count() << " \\" << "\\ ";
 
-        std::cout << duration2.count() << '\t';
-
-        auto start3 = std::chrono::high_resolution_clock::now();
-        std::stable_sort(benchmark_data.begin(), benchmark_data.end(), cmp);
-        auto finish3 = std::chrono::high_resolution_clock::now();
-        auto duration3 = std::chrono::duration_cast<std::chrono::microseconds>(finish3 - start3);
-
-        std::cout << duration3.count() << '\t';
-        std::cout << std::endl;
-
+        std::cout << '\n';
+        vec.clear();
+        tree.destroy();
     }
-    return 0;
 }
 
 
@@ -524,6 +575,6 @@ int main() {
 
 \subsection*{Выводы}
 
-В ходе выполнения данной работы были изучены алгоритмы линейных сортировок, также был реализован алгоритм сортировки подсчетом. При написании алгоритма не возникло проблем, так как он достаточно прост и понятен. Реализованный алгоритм сортировки имеет множество применений. Линейная временная сложность делает алгоритм эффективным для задач с ограниченным диапазоном значений.
+В ходе выполнения данной работы были изучены методы построения сбалансированных деревьев, в частности AVL-дерева. При написании дерева наибольшую сложность имела задача написания логики вставки и удаления с балансировкой. Судя по проведенным тестам можно сказать, что AVL-дерево - достаточно быстрая и эффективная структура для хранения ключей и быстрого доступа к данным по ключу.
 
 \end{document}
