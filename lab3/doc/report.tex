@@ -1,0 +1,279 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{fullpage}
+\usepackage{multicol,multirow}
+\usepackage{tabularx}
+\usepackage{ulem}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{verbatim}
+
+\begin{document}
+
+\section*{Лабораторная работа №\,3 по курсу дискрeтного анализа: Исследование качества
+программ}
+
+Выполнил студент группы М80-208Б-22 МАИ \textit{Цирулев Николай}.
+
+\subsection*{Условие}
+Для реализации словаря из предыдущей лабораторной работы,
+необходимо провести исследование скорости выполнения и потребления
+оперативной памяти. В случае выявления ошибок или явных недочётов,
+требуется их исправить.
+\\\\
+Результатом лабораторной работы является отчёт, состоящий из:
+\begin{itemize}
+\item
+    Дневника выплонения работы, в котором отражено что и когда
+    делалось, какие средства использовались и какие результаты были
+    достигнуты на каждом шаге выполнения лабораторной работы.
+\item
+    Выводов о найденных недочётах.
+\item
+    Сравнение работы исправленной программы с предыдущей версией.
+\item
+    Общих выводов о выполнении лабораторной работы, полученном
+    опыте.
+\end{itemize}
+
+\subsection*{Метод решения}
+
+В ходе выполнения лабораторной работы №2 была использована утилита Valgrind. Для проверки корректности работы каждой функции и метода программы они тестировались отдельно по мере их написания, а затем — все вместе, также с использованием Valgrind.
+
+Запуск программы с использованием Valgrind:
+\begin{lstlisting}
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ g++ main.cpp
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ valgrind ./a.out –leak-check=full
+==58142== Memcheck, a memory error detector
+==58142== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==58142== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==58142== Command: ./a.out ___leak-check=full
+==58142==
++ word 123
+OK
++ qwerty 234567
+OK
+word
+OK: 123
+- qwerty
+OK
+==58142==
+==58142== HEAP SUMMARY:
+==58142==     in use at exit: 296 bytes in 1 blocks
+==58142==   total heap usage: 5 allocs, 4 frees, 76,368 bytes allocated
+==58142==
+==58142== LEAK SUMMARY:
+==58142==    definitely lost: 296 bytes in 1 blocks
+==58142==    indirectly lost: 0 bytes in 0 blocks
+==58142==      possibly lost: 0 bytes in 0 blocks
+==58142==    still reachable: 0 bytes in 0 blocks
+==58142==         suppressed: 0 bytes in 0 blocks
+==58142== Rerun with --leak-check=full to see details of leaked memory
+==58142==
+==58142== For lists of detected and suppressed errors, rerun with: -s
+==58142== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+\end{lstlisting}
+Как видно из вывода, 296 байт памяти были выделены на куче, но не освобождены. 
+Воспользуемся утилитой gprof:
+\begin{lstlisting}
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ g++ -pg main.cpp -o a
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ cat infile.txt | ./a > /dev/null
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ cat infile.txt | gprof ./a > profile
+\end{lstlisting}
+В конце программы в дереве остался один элемент, что подтверждается выводом Valgrind:
+\begin{lstlisting}
+==58142== total heap usage: 5 allocs, 4 frees, 76,368 bytes \end{lstlisting}
+
+Также, как мы видим, деструктор класса TAVLTree не был вызван ни разу за все время работы программы:
+\begin{lstlisting}
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]     99.3    0.02    5.70                 main [1]
+                0.00    1.88  999883/999883      TAVLTree<AVLTreeData>::remove(AVLTreeData) [3]
+                0.01    1.73  999883/999883      TAVLTree<AVLTreeData>::insert(AVLTreeData) [5]
+                1.12    0.01 4000001/4000001     operator>>(std::istream&, AVLTreeData&) [8]
+                0.00    0.87 2000000/2000000     TAVLTree<AVLTreeData>::search(AVLTreeData) [10]
+                0.00    0.03 3999766/117356317     AVLTreeData::AVLTreeData(AVLTreeData const&) [9]
+                0.01    0.02 2000001/2999884     AVLTreeData::AVLTreeData() [25]
+                0.02    0.00 3000000/3000000     AVLTreeData::operator[](unsigned long) [33]
+                0.00    0.00 5999767/120356201     AVLTreeData::~AVLTreeData() [28]
+                0.00    0.00       1/1           TAVLTree<AVLTreeData>::TAVLTree() [48]
+\end{lstlisting}
+
+Это означает, что AVL-дерево не удалялось в конце. После добавления команды \texttt{tree.destroy();} в завершение программы утечки памяти были устранены:
+\begin{lstlisting}
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ g++ main.cpp
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last$ valgrind ./a.out –leak-check=full
+==69811== Memcheck, a memory error detector
+==69811== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==69811== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==69811== Command: ./a.out ___leak-check=full
+==69811==
++ word 123
+OK
++ qwerty 93485
+OK
+qwerty
+OK: 93485
+
+qqq
+NoSuchWord
+- word
+OK
+Word
+NoSuchWord
+Qwerty
+OK: 93485
+==69811==
+==69811== HEAP SUMMARY:
+==69811==     in use at exit: 0 bytes in 0 blocks
+==69811==   total heap usage: 5 allocs, 5 frees, 76,368 bytes allocated
+==69811==
+==69811== All heap blocks were freed -- no leaks are possible
+==69811==
+==69811== For lists of detected and suppressed errors, rerun with: -s
+==69811== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+\end{lstlisting}
+Во время тестирования программы была использована утилита gcov для анализа покрытия кода, что позволило оценить эффективность тестирования и выявить области, которые могут нуждаться в доработке.
+Команда для компиляции программы с включенной поддержкой профилирования и генерации отчетов покрытия:
+\begin{lstlisting}
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last/cov$ g++ -g -fprofile-arcs -ftest-coverage -o main ../main.cpp
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last/cov$ ./main
++ word 1
+OK
++ WORLD 2
+OK
+word
+OK: 1
+wordo
+NoSuchWord
+- WORD
+OK
+word
+NoSuchWord
+world
+OK: 2
+WORLD
+OK: 2
+! Save /home/hacker/prog/da_labs/lab2/other_way/last/cov/file.bin
+OK
+! Load /home/hacker/prog/da_labs/lab2/other_way/last/cov/file.bin
+OK
++ q 3
+OK
+
++ e 5
+OK
+- a
+NoSuchWord
+- q
+OK
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last/cov$ gcov ./main.cpp
+File '../main.cpp'
+Lines executed:90.00% of 210
+Creating 'main.cpp.gcov'
+
+File '/usr/include/c++/11/iostream'
+No executable lines
+Removing 'iostream.gcov'
+
+File '/usr/include/c++/11/bits/stl_algobase.h'
+Lines executed:97.37% of 38
+Creating 'stl_algobase.h.gcov'
+
+File '/usr/include/c++/11/bits/cpp_type_traits.h'
+Lines executed:100.00% of 2
+Creating 'cpp_type_traits.h.gcov'
+
+File '/usr/include/c++/11/bits/stl_iterator_base_types.h'
+Lines executed:100.00% of 2
+Creating 'stl_iterator_base_types.h.gcov'
+
+File '/usr/include/c++/11/istream'
+Lines executed:100.00% of 5
+Creating 'istream.gcov'
+
+File '/usr/include/c++/11/bits/ios_base.h'
+Lines executed:100.00% of 2
+Creating 'ios_base.h.gcov'
+
+File '/usr/include/c++/11/new'
+Lines executed:0.00% of 1
+Creating 'new.gcov'
+
+File '/usr/include/c++/11/bits/exception.h'
+Lines executed:0.00% of 1
+Creating 'exception.h.gcov'
+
+Lines executed:90.80% of 261
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last/cov$ lcov -t "main" -o main.info -c -d .
+Capturing coverage data from .
+Subroutine read_intermediate_text redefined at /usr/bin/geninfo line 2623.
+Subroutine read_intermediate_json redefined at /usr/bin/geninfo line 2655.
+Subroutine intermediate_text_to_info redefined at /usr/bin/geninfo line 2703.
+Subroutine intermediate_json_to_info redefined at /usr/bin/geninfo line 2792.
+Subroutine get_output_fd redefined at /usr/bin/geninfo line 2872.
+Subroutine print_gcov_warnings redefined at /usr/bin/geninfo line 2900.
+Subroutine process_intermediate redefined at /usr/bin/geninfo line 2930.
+Found gcov version: 11.4.0
+Using intermediate gcov format
+Scanning . for .gcda files ...
+Found 2 data files in .
+Processing benchmark.gcda
+Processing main.gcda
+Finished .info-file creation
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last/cov$ genhtml -o report main.info
+Reading data file main.info
+Found 33 entries.
+Found common filename prefix "/usr/include/c++"
+Writing .css and .png files.
+Generating output.
+Processing file /home/hacker/prog/da_labs/lab2/other_way/last/main.cpp
+Processing file /home/hacker/prog/da_labs/lab2/other_way/last/benchmark.cpp
+Processing file 11/chrono
+Processing file 11/new
+Processing file 11/tuple
+Processing file 11/istream
+Processing file 11/bits/alloc_traits.h
+Processing file 11/bits/exception.h
+Processing file 11/bits/vector.tcc
+Processing file 11/bits/cpp_type_traits.h
+Processing file 11/bits/stl_algobase.h
+Processing file 11/bits/stl_function.h
+Processing file 11/bits/random.h
+Processing file 11/bits/random.tcc
+Processing file 11/bits/stl_tree.h
+Processing file 11/bits/stl_vector.h
+Processing file 11/bits/stl_iterator_base_types.h
+Processing file 11/bits/stl_uninitialized.h
+Processing file 11/bits/stl_iterator.h
+Processing file 11/bits/stl_map.h
+Processing file 11/bits/basic_string.tcc
+Processing file 11/bits/move.h
+Processing file 11/bits/allocator.h
+Processing file 11/bits/stl_pair.h
+Processing file 11/bits/uniform_int_dist.h
+Processing file 11/bits/stl_construct.h
+Processing file 11/bits/ios_base.h
+Processing file 11/bits/stl_iterator_base_funcs.h
+Processing file 11/bits/char_traits.h
+Processing file 11/bits/basic_string.h
+Processing file 11/ext/new_allocator.h
+Processing file 11/ext/type_traits.h
+Processing file 11/ext/aligned_buffer.h
+Writing directory view page.
+Overall coverage rate:
+  lines......: 90.0% (861 of 957 lines)
+  functions..: 96.1% (246 of 256 functions)
+hacker@warmachine:~/prog/da_labs/lab2/other_way/last/cov$
+\end{lstlisting}
+После генерации файла с данными покрытия main.info с помощью lcov и создания HTML-отчета с использованием genhtml было установлено, что общее покрытие программы составляет 90\% для строк и 96,1\% для функций. Эти показатели свидетельствуют о высоком уровне тестирования и указывают на то, что основные функции программы проверены и работают корректно.
+
+\subsection*{Выводы}
+
+Использование Valgrind позволило оперативно обнаружить утечки памяти и гарантировать, что исправленная версия программы полностью освобождает выделенные ресурсы. Утилита gprof предоставила детализированный отчет о времени выполнения различных функций, что помогло идентифицировать узкие места в производительности. Применение gcov продемонстрировало высокий уровень покрытия кода тестами, однако также выявило участки, которые могли остаться неохваченными тестированием, что позволило составить более полные тесты.
+
+В результате выполнения данной лабораторной работы были получены полезные навыки работы с инструментами анализа производительности и памяти. Эти навыки значительно способствуют улучшению качества программного обеспечения и повышению надежности кода. Лабораторная работа также подтвердила важность регулярного использования подобных утилит на всех этапах разработки, что позволяет своевременно обнаруживать и устранять потенциальные проблемы в коде.
+
+\end{document}
