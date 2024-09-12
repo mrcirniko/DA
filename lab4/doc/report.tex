@@ -116,13 +116,13 @@ int main() {
 \\
 \begin{tabularx}{\textwidth}{ |X|X|X|X| }
     \hline
-    Количество & z\_algorithm(), & std::default\_searcher, & std::boyer\_moore\_searcher, \\
+    Количество & z\_algorithm(), & std::default\_searcher, & std::boyer\_moore\_horspool\_searcher, \\
     символов в тексте  & мс & мс & мс \\
     \hline
-    100000 & 3240 & 1858 & 5892 \\
-    1000000 & 26573 & 17369 & 58879 \\
-    10000000 & 268407 & 170710 & 587061 \\
-    100000000 & 2797324 & 1712765 & 5883362 \\
+    100000 & 3516 & 2069 & 2137 \\
+    1000000 & 36127 & 20428 & 20280 \\
+    10000000 & 360021 & 206227 & 205491 \\
+    100000000 & 3677630 & 2050409 & 2024266 \\
     \hline
 \end{tabularx}
 \\
@@ -198,7 +198,7 @@ int main() {
         std::vector<size_t> res3;
         auto it2 = s.begin();
         while (it2 != s.end()) {
-            const std::boyer_moore_searcher searcher(p.begin(), p.end());
+            const std::boyer_moore_horspool_searcher searcher(p.begin(), p.end());
             it2 = std::search(it2, s.end(), searcher);
             if (it2 != s.end()) {
                 res3.push_back(it2 - s.begin());
