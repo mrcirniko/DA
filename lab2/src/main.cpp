@@ -104,9 +104,9 @@ public:
     int n;
     TAVLTree() : root(nullptr), n(0) { }
 
-    void insert(T x) { root = insertUtil(root, x); }
+    virtual void insert(T x) { root = insertUtil(root, x); }
 
-    void remove(T x) {
+    virtual void remove(T x) {
         if (root != nullptr) {
             root = removeUtil(root, x);
         }
@@ -156,7 +156,7 @@ public:
         return getSizeUtil(root);
     }
 
-private:
+protected:
     size_t getSizeUtil(const TNode* node) {
         if (node != nullptr) {
             return 1 + getSizeUtil(node->left) + getSizeUtil(node->right);
@@ -244,7 +244,7 @@ private:
         return head;
     }
 
-    TNode* insertUtil(TNode* head, T x) {
+    virtual TNode* insertUtil(TNode* head, T x) {
         if (head == nullptr) {
             n += 1;
             TNode* temp = new TNode(x);
@@ -260,7 +260,7 @@ private:
         head->height = 1 + std::max(height(head->left), height(head->right));
         return balance(head);
     }
-    TNode* removeUtil(TNode* head, T x) {
+    virtual TNode* removeUtil(TNode* head, T x) {
         if (head == nullptr)
             return nullptr;
         if (x < head->data) {
